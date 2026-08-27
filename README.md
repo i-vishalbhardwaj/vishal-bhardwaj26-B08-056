@@ -42,6 +42,28 @@
 - Hough Line Transform.
 - Drawing lane lines and highlighting the drivable area.
 
+### Task 2: Lane Detection
+
+Yesterday, Task 2 was initially implemented and tested on a single road image. The lane detection algorithm was able to detect the lane boundaries and highlight the drivable area.
+
+Today, the implementation was modified to work with multiple input images instead of only one image.
+
+### Changes Made
+- Modified the code to process all 10 road images automatically.
+- Added a loop to process each image one by one using the same lane detection algorithm.
+- Handled different image formats:
+  - `road1.png` to `road8.png`
+  - `road9.jpeg` and `road10.jpeg`
+- Generated a separate output for each input image.
+- Stored the processed images in the `output` folder.
+- Tested the same algorithm across all 10 images to evaluate its performance.
+- Observed that the algorithm works well on some images but does not detect lanes accurately in every image.
+- The current implementation uses Canny Edge Detection, Region of Interest (ROI), and Hough Line Transform.
+- The updated Task 2 code and outputs were committed and pushed to GitHub.
+
+### Current Status
+Task 2 has been successfully modified from single-image processing to multiple-image processing. The same algorithm is now tested on all 10 provided road images. Further improvement of lane detection accuracy may be required for images where the current approach does not detect the lanes correctly.
+
 ### TASK 3 – OBSTACLE & POTHOLE DETECTION
 
 **Progress:**
