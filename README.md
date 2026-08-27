@@ -91,3 +91,15 @@ Task 2 has been successfully modified from single-image processing to multiple-i
 - Learned how image pixel coordinates (x, y) work.
 - Learned how to count detected objects.
 - Learned how to reduce false detections by adjusting image-processing parameters.
+
+### Task 3 – Obstacle and Pothole Detection
+
+* Implemented obstacle and pothole detection using OpenCV.
+* Initially tested the algorithm on a single image.
+* Modified the program to process multiple input images automatically.
+* The algorithm now processes all 10 images (`page1.png` to `page10.png`).
+* Used HSV color segmentation, morphological operations, contour detection, and shape-based filtering.
+* Detected obstacles and potholes are marked with bounding boxes and coordinates.
+* Detection results and object counts are displayed on each output image.
+* Separate output images are generated and saved in the `task3/output` folder.
+* Tested the algorithm on the complete set of input images.
