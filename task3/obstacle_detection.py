@@ -1,257 +1,125 @@
 import cv2
 import numpy as np
+import os
 
-# -----------------------------
-# Read input image
-# -----------------------------
-image = cv2.imread("task3/input/road.png")
+def process_image(img_path, output_path):
+    img = cv2.imread(img_path)
+    if img is None:
+        print(f"Error: Could not read image {img_path}")
+        return
 
-if image is None:
-    print("Image not found!")
-    exit()
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    height, width = img.shape[:2]
 
-result = image.copy()
+    pothole_count = 0
+    obstacle_count = 0
 
-# Convert to HSV
-hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # -------------------------------------------------------------
+    # 1. OPTIMIZED POTHOLE DETECTION (Covers page1 and page10 edge potholes)
+    # -------------------------------------------------------------
+    # Slower threshold to catch dim/distant white patches
+    _, white_mask = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
+    
+    # Mild kernel to retain original circular shape
+    kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    white_mask_cleaned = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel_small)
 
+    contours_white, _ = cv2.findContours(white_mask_cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-# =========================================================
-# 1. YELLOW OBSTACLE DETECTION
-# =========================================================
+    for cnt in contours_white:
+        area = cv2.contourArea(cnt)
+        if area > 25:  # Lowered min area to detect far-away small potholes
+            x, y, w, h = cv2.boundingRect(cnt)
+            perimeter = cv2.arcLength(cnt, True)
+            if perimeter == 0:
+                continue
+            
+            circularity = 4 * np.pi * (area / (perimeter * perimeter))
+            aspect_ratio = float(w) / h
 
-lower_yellow = np.array([20, 100, 80])
-upper_yellow = np.array([40, 255, 255])
+            # Filter out very long/thin continuous lane markings (aspect ratio extreme check)
+            if 0.18 < circularity and 0.25 < aspect_ratio < 4.0 and w < (width * 0.45) and h < (height * 0.45):
+                # Avoid border-touching full frame contours
+                if x > 1 and y > 1 and (x + w) < (width - 1) and (y + h) < (height - 1):
+                    pothole_count += 1
+                    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    cv2.putText(img, f"Pothole ({x},{y})", (x, max(15, y - 5)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 1)
 
-yellow_mask = cv2.inRange(
-    hsv,
-    lower_yellow,
-    upper_yellow
-)
+    # -------------------------------------------------------------
+    # 2. OBSTACLE DETECTION (Yellow, Blue, Green, Crates)
+    # -------------------------------------------------------------
+    masks = []
 
-# Remove small noise
-kernel = np.ones((5, 5), np.uint8)
-yellow_mask = cv2.morphologyEx(
-    yellow_mask,
-    cv2.MORPH_OPEN,
-    kernel
-)
+    # Yellow / Gold / Brownish-Yellow (Cylinders & Wooden Crates)
+    masks.append(cv2.inRange(hsv, np.array([10, 40, 40]), np.array([38, 255, 255])))
 
+    # Dark Blue / Light Blue Cylinders
+    masks.append(cv2.inRange(hsv, np.array([90, 60, 30]), np.array([135, 255, 255])))
 
-# Distance transform helps separate touching objects
-dist = cv2.distanceTransform(
-    yellow_mask,
-    cv2.DIST_L2,
-    5
-)
+    # Green Cylinders
+    masks.append(cv2.inRange(hsv, np.array([38, 40, 30]), np.array([85, 255, 255])))
 
-_, sure_fg = cv2.threshold(
-    dist,
-    0.35 * dist.max(),
-    255,
-    0
-)
+    combined_obstacle_mask = masks[0]
+    for m in masks[1:]:
+        combined_obstacle_mask = cv2.bitwise_or(combined_obstacle_mask, m)
 
-sure_fg = np.uint8(sure_fg)
+    kernel_obs = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    combined_obstacle_mask = cv2.morphologyEx(combined_obstacle_mask, cv2.MORPH_CLOSE, kernel_obs)
 
-sure_bg = cv2.dilate(
-    yellow_mask,
-    kernel,
-    iterations=3
-)
+    contours_obs, _ = cv2.findContours(combined_obstacle_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-unknown = cv2.subtract(
-    sure_bg,
-    sure_fg
-)
+    for cnt in contours_obs:
+        area = cv2.contourArea(cnt)
+        if area > 80:
+            x, y, w, h = cv2.boundingRect(cnt)
+            aspect_ratio = float(w) / h
+            
+            # Splitting overlapping side-by-side cylinders
+            if aspect_ratio > 1.75 and area > 1200:
+                half_w = w // 2
+                
+                # Cylinder 1
+                obstacle_count += 1
+                cv2.rectangle(img, (x, y), (x + half_w, y + h), (0, 0, 255), 2)
+                cv2.putText(img, f"Obstacle ({x},{y})", (x, max(15, y - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 1)
+                
+                # Cylinder 2
+                obstacle_count += 1
+                cv2.rectangle(img, (x + half_w, y), (x + w, y + h), (0, 0, 255), 2)
+                cv2.putText(img, f"Obstacle ({x+half_w},{y})", (x + half_w, max(15, y - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 1)
+            else:
+                obstacle_count += 1
+                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                cv2.putText(img, f"Obstacle ({x},{y})", (x, max(15, y - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 1)
 
-num_labels, markers = cv2.connectedComponents(sure_fg)
+    # -------------------------------------------------------------
+    # 3. DRAW SUMMARY ON TOP CORNER
+    # -------------------------------------------------------------
+    summary = f"Total Potholes: {pothole_count} | Total Obstacles: {obstacle_count}"
+    cv2.rectangle(img, (10, 10), (520, 50), (0, 0, 0), -1)
+    cv2.putText(img, summary, (20, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
-markers = markers + 1
-markers[unknown == 255] = 0
+    cv2.imwrite(output_path, img)
+    print(f"Done: {os.path.basename(img_path)} -> Potholes: {pothole_count}, Obstacles: {obstacle_count}")
 
-markers = cv2.watershed(
-    image,
-    markers
-)
+# Dynamic Path Setup
+script_dir = os.path.dirname(os.path.abspath(__file__))
+input_dir = os.path.join(script_dir, "input")
+output_dir = os.path.join(script_dir, "output")
 
-yellow_count = 0
+os.makedirs(output_dir, exist_ok=True)
 
-for label in range(2, num_labels + 1):
+for i in range(1, 11):
+    file_name = f"page{i}.png"
+    in_file_path = os.path.join(input_dir, file_name)
+    out_file_path = os.path.join(output_dir, f"page{i}_detected.png")
 
-    mask = np.zeros(
-        yellow_mask.shape,
-        dtype=np.uint8
-    )
-
-    mask[markers == label] = 255
-
-    area = cv2.countNonZero(mask)
-
-    if area < 500:
-        continue
-
-    x, y, w, h = cv2.boundingRect(mask)
-
-    # Draw yellow bounding box
-    cv2.rectangle(
-        result,
-        (x, y),
-        (x + w, y + h),
-        (0, 255, 255),
-        3
-    )
-
-    # Coordinate
-    cv2.putText(
-        result,
-        f"Obstacle ({x},{y})",
-        (x, max(y - 10, 20)),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.55,
-        (0, 255, 255),
-        2
-    )
-
-    yellow_count += 1
-
-
-# =========================================================
-# 2. WHITE POTHOLE DETECTION
-# =========================================================
-
-lower_white = np.array([0, 0, 180])
-upper_white = np.array([180, 80, 255])
-
-white_mask = cv2.inRange(
-    hsv,
-    lower_white,
-    upper_white
-)
-
-# Remove thin road markings
-kernel = cv2.getStructuringElement(
-    cv2.MORPH_ELLIPSE,
-    (21, 21)
-)
-
-white_clean = cv2.morphologyEx(
-    white_mask,
-    cv2.MORPH_OPEN,
-    kernel
-)
-
-# Find white blobs
-contours, _ = cv2.findContours(
-    white_clean,
-    cv2.RETR_EXTERNAL,
-    cv2.CHAIN_APPROX_SIMPLE
-)
-
-white_count = 0
-
-for contour in contours:
-
-    area = cv2.contourArea(contour)
-
-    if area < 300 or area > 5000:
-        continue
-
-    x, y, w, h = cv2.boundingRect(contour)
-
-    # Potholes should be small
-    if w > 100 or h > 100:
-        continue
-
-    # Avoid long road lines
-    aspect_ratio = w / float(h)
-
-    if aspect_ratio < 0.45 or aspect_ratio > 2.2:
-        continue
-
-    # Check circularity
-    perimeter = cv2.arcLength(contour, True)
-
-    if perimeter == 0:
-        continue
-
-    circularity = (
-        4 * np.pi * area
-        / (perimeter * perimeter)
-    )
-
-    if circularity < 0.25:
-        continue
-
-    # Draw pothole box
-    cv2.rectangle(
-        result,
-        (x, y),
-        (x + w, y + h),
-        (255, 255, 255),
-        3
-    )
-
-    # Coordinates
-    cv2.putText(
-        result,
-        f"Pothole ({x},{y})",
-        (x, max(y - 10, 20)),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.55,
-        (255, 255, 255),
-        2
-    )
-
-    white_count += 1
-# =========================================================
-# 3. DISPLAY COUNTS
-# =========================================================
-
-total_count = yellow_count + white_count
-
-cv2.putText(
-    result,
-    f"Total Objects: {total_count}",
-    (30, 40),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    0.9,
-    (0, 255, 0),
-    3
-)
-
-cv2.putText(
-    result,
-    f"Obstacles: {yellow_count}",
-    (30, 75),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    0.7,
-    (0, 255, 255),
-    2
-)
-
-cv2.putText(
-    result,
-    f"Potholes: {white_count}",
-    (30, 105),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    0.7,
-    (255, 255, 255),
-    2
-)
-
-
-# =========================================================
-# 4. SAVE OUTPUT
-# =========================================================
-
-cv2.imwrite(
-    "task3/output/road_detected.png",
-    result
-)
-
-print("Obstacle and pothole detection completed!")
-print("Obstacles:", yellow_count)
-print("Potholes:", white_count)
-print("Total:", total_count)
-print("Output saved as task3/output/road_detected.png")
+    if os.path.exists(in_file_path):
+        process_image(in_file_path, out_file_path)
+    else:
+        print(f"Skipped: {file_name} not found in {input_dir}")
