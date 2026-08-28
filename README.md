@@ -103,3 +103,33 @@ Task 2 has been successfully modified from single-image processing to multiple-i
 * Detection results and object counts are displayed on each output image.
 * Separate output images are generated and saved in the `task3/output` folder.
 * Tested the algorithm on the complete set of input images.
+
+### TASK 4 – AERIAL PATH PLANNING
+
+#### Progress:
+- Analyzed the given aerial images of the track.
+- Processed all 9 input images.
+- Detected the road/track boundary from the images.
+- Detected obstacles and potholes that could make the path unsafe.
+- Created a safe path inside the road boundary while avoiding detected obstacles and potholes.
+- Used a checkpoint-based path planning approach to generate the route.
+- Generated a separate output image for each input image with the calculated safe path.
+- Saved all 9 processed output images in the `task4/output` folder.
+- The final path is highlighted on each output image for easy visualization.
+
+#### Problems Faced:
+- Initially, the generated path was going outside the road boundary.
+- Some detected obstacles and potholes were interfering with the path.
+- The path sometimes created unnecessary branches instead of following one safe route.
+- Path generation parameters had to be adjusted to make the route safer and smoother.
+- After tuning the detection and path-planning conditions, the program successfully generated paths for all 9 images.
+
+#### What I Learned:
+- Learned how aerial images can be used for path planning.
+- Learned how to identify road boundaries from an image.
+- Learned how obstacle and pothole detection can be combined with path planning.
+- Learned about safe path generation using checkpoints.
+- Learned how to check whether a path stays inside the road.
+- Learned how to avoid obstacles and potholes while generating a route.
+- Learned how to process multiple images automatically using Python.
+- Learned how to save the calculated path as output images.
