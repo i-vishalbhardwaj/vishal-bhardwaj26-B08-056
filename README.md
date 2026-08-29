@@ -62,7 +62,10 @@ Today, the implementation was modified to work with multiple input images instea
 - The updated Task 2 code and outputs were committed and pushed to GitHub.
 
 ### Current Status
-Task 2 has been successfully modified from single-image processing to multiple-image processing. The same algorithm is now tested on all 10 provided road images. Further improvement of lane detection accuracy may be required for images where the current approach does not detect the lanes correctly.
+Task 2 has been successfully modified from single-image processing to multiple-image processing. The same algorithm is now tested on all 10 provided road images. Further improvement of lane detection accuracy may be required for images where the current approach does not detect the lanes correctly.  
+
+### Task -2 summery 
+Maine OpenCV-based lane detection approach use ki hai. Pehle image ko grayscale mein convert karke Canny Edge Detection se edges nikale. Phir Region of Interest (ROI) apply karke sirf road ke relevant area ko rakha. Uske baad Probabilistic Hough Transform se line segments detect kiye. Slope ke basis par left aur right lane candidates ko separate kiya, phir unke average slope aur intercept se representative lane boundaries banayi. Finally, dono lane boundaries ke beech polygon bana kar transparent green overlay se drivable area highlight kiya aur processed images ko output folder mein save kiya.
 
 ### TASK 3 – OBSTACLE & POTHOLE DETECTION
 
@@ -104,6 +107,10 @@ Task 2 has been successfully modified from single-image processing to multiple-i
 * Separate output images are generated and saved in the `task3/output` folder.
 * Tested the algorithm on the complete set of input images.
 
+### task3 summery
+
+Maine OpenCV-based pothole and obstacle detection approach use ki hai. Pehle image ko grayscale aur HSV mein convert kiya. Grayscale image par thresholding aur morphological operations apply karke pothole candidates identify kiye, phir contours detect karke area, circularity aur aspect ratio ke basis par potholes filter kiye. Obstacles ke liye HSV color segmentation use karke yellow, blue, red aur green regions ke masks banaye. In masks ko combine karke morphological operations aur contour filtering ke through obstacles detect kiye. Finally, potholes ko green bounding boxes aur obstacles ko red bounding boxes se mark kiya, coordinates aur total counts display kiye, aur processed images ko output folder mein save kiya.
+
 ### TASK 4 – AERIAL PATH PLANNING
 
 #### Progress:
@@ -133,3 +140,12 @@ Task 2 has been successfully modified from single-image processing to multiple-i
 - Learned how to avoid obstacles and potholes while generating a route.
 - Learned how to process multiple images automatically using Python.
 - Learned how to save the calculated path as output images.
+
+### task4 summery 
+Maine OpenCV-based aerial image path planning approach use ki hai. Pehle image se grayscale brightness aur HSV saturation ke basis par road area detect karke road mask create kiya. Uske baad HSV color segmentation ka use karke yellow, blue, red aur green regions se obstacles detect kiye, aur grayscale thresholding se dark regions ko pothole candidates ke roop mein identify kiya. Morphological operations aur contour filtering ke through noise remove karke obstacle aur pothole regions ko refine kiya. Phir obstacles aur potholes ko unsafe regions mark karke dilation ke through safety margin add kiya aur road boundary ko erode karke safe traversable area create kiya. Start point detect karne ke baad A* path-finding algorithm with Euclidean distance heuristic ka use karke safe area ke andar path generate kiya. Multiple checkpoints ko connect karke loop-like path banaya aur final output image mein road boundary, obstacles, potholes, start point aur planned path ko highlight karke output folder mein save kiya.
+
+### Task 5 – Introduction to ROS 2 (Bonus)
+
+Maine ROS 2 Jazzy ko Ubuntu 24.04 (WSL) environment mein install aur setup kiya. ROS 2 workspace create karke task5 naam ka Python package banaya. Publisher aur subscriber nodes ke liye basic Python files create ki aur setup.py mein required entry points configure kiye. ROS 2 package ko colcon build ke through successfully build bhi kiya.
+
+However, while trying to run the publisher-subscriber communication, I faced a ROS 2 package discovery/environment setup issue. Although the package was successfully detected by colcon and built successfully, ROS 2 was unable to recognize the task5 package through the ROS package environment. Due to this issue, I could not complete and upload the final publisher-subscriber and service-client implementation.
